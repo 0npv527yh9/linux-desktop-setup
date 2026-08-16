@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Installation Steps - Linux Desktop Setup</title>
+        <title>Enable Hibernation - Linux Desktop Setup</title>
 
 
         <!-- Custom HTML head -->
@@ -177,39 +177,139 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="installation-steps"><a class="header" href="#installation-steps">Installation Steps</a></h1>
-<p>Linux distro のインストールは以下の手順で行います。</p>
-<ol>
-<li>インストールする Linux ディストーションの ISO イメージをダウンロード</li>
-<li>Live USB 作成</li>
-<li>Live USB 上での起動</li>
-<li>インストール</li>
-<li>インストール後のセットアップ</li>
-</ol>
-<p>どの Linux distro をインストールする場合もほとんど手順は同じなので先にまとめておきます。</p>
-<h2 id="必要なもの"><a class="header" href="#必要なもの">必要なもの</a></h2>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>項目</th><th>備考</th></tr>
-</thead>
-<tbody>
-<tr><td>インターネットに接続している PC</td><td>Linux をインストールする PC と同一でも可</td></tr>
-<tr><td>ISO イメージを保存するストレージ</td><td>Linux をインストールするストレージと同一でも可</td></tr>
-<tr><td>Live USB 用の USB メモリ</td><td>既存のデータは完全に消えるので不要なものや新品のもの</td></tr>
-</tbody>
-</table>
-</div>
+                        <h1 id="enable-hibernate"><a class="header" href="#enable-hibernate">Enable Hibernate</a></h1>
+<p>swapfile を使った Hibernate（休止状態）の設定を行います。</p>
+<blockquote class="blockquote-tag blockquote-tag-warning">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Warning</p>
+<p>Hibernate はハードウェア、ファームウェア、ドライバー、カーネルに依存します。復帰に失敗する可能性があるため、最初のテスト前に作業を保存し、重要なデータをバックアップしてください。この記事に記載した UUID とオフセットの例をコピーせず、必ず自分の環境の値を使います。</p>
+</blockquote>
+<h2 id="環境"><a class="header" href="#環境">環境</a></h2>
+<ul>
+<li>Surface Pro 2017（RAM 約 8 GiB）</li>
+<li>Ubuntu 24.04 LTS</li>
+<li>カーネル <code>7.0.0-28-generic</code></li>
+<li>systemd 255</li>
+<li>ext4 上の <code>/swap.img</code>（8 GiB）</li>
+<li>Secure Boot: 無効</li>
+</ul>
+<p>この環境で利用可能なメモリスリープ方式は <code>s2idle</code> のみで、<code>deep</code>（S3）は利用できませんでした。一方、カーネルは Suspend-to-Disk に対応していました。</p>
+<h2 id="事前確認"><a class="header" href="#事前確認">事前確認</a></h2>
+<p>カーネルが公開している電源状態、メモリスリープ方式、メモリと swap を確認します。</p>
+<pre><code class="language-bash">cat /sys/power/state
+cat /sys/power/mem_sleep
+free -h
+swapon --show
+findmnt -no SOURCE,FSTYPE,UUID /
+</code></pre>
+<p><code>/sys/power/state</code> に <code>disk</code> が含まれること、Hibernate イメージを保存できる容量の swap が有効であることを確認します。</p>
+<h2 id="swapfile-の復帰先を調べる"><a class="header" href="#swapfile-の復帰先を調べる">swapfile の復帰先を調べる</a></h2>
+<p>ルートファイルシステムの UUID を取得します。</p>
+<pre><code class="language-bash">findmnt -no UUID /
+</code></pre>
+<p>次に <code>/swap.img</code> の物理オフセットを取得します。ext4 では <code>filefrag</code> の最初の extent の <code>physical_offset</code> を使います。</p>
+<pre><code class="language-bash">sudo filefrag -v /swap.img
+</code></pre>
+<p>出力例:</p>
+<pre><code class="language-text">File size of /swap.img is ...
+ ext: logical_offset: physical_offset: ...
+   0:        0..:       22149120..: ...
+</code></pre>
+<p>この例のオフセットは <code>22149120</code> です。以降の <code>&lt;ROOT_UUID&gt;</code> と <code>&lt;RESUME_OFFSET&gt;</code> は、自分の環境で取得した値に置き換えます。</p>
+<blockquote class="blockquote-tag blockquote-tag-note">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+<p>Btrfs の swapfile では取得方法が異なります。この手順は ext4 を対象としています。</p>
+</blockquote>
+<h2 id="grub-に復帰先を設定する"><a class="header" href="#grub-に復帰先を設定する">GRUB に復帰先を設定する</a></h2>
+<p><code>/etc/default/grub.d/99-hibernate.cfg</code> を作成します。</p>
+<pre><code class="language-sh">GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT resume=UUID=&lt;ROOT_UUID&gt; resume_offset=&lt;RESUME_OFFSET&gt;"
+</code></pre>
+<p><code>resume</code> には swapfile 自体ではなく、それを格納するファイルシステムの UUID を指定します。</p>
+<h2 id="initramfs-に復帰先を設定する"><a class="header" href="#initramfs-に復帰先を設定する">initramfs に復帰先を設定する</a></h2>
+<p><code>/etc/initramfs-tools/conf.d/resume</code> を作成します。</p>
+<pre><code class="language-text">RESUME=UUID=&lt;ROOT_UUID&gt;
+</code></pre>
+<h2 id="systemd-で-hibernate-を許可する"><a class="header" href="#systemd-で-hibernate-を許可する">systemd で Hibernate を許可する</a></h2>
+<p>この端末では systemd の自動判定が Hibernate を利用不可としたため、<code>/etc/systemd/sleep.conf.d/99-hibernate.conf</code> で明示的に許可しました。</p>
+<pre><code class="language-ini">[Sleep]
+AllowHibernation=yes
+HibernateMode=platform shutdown
+AllowSuspendThenHibernate=yes
+HibernateDelaySec=60min
+</code></pre>
+<p>この指定をしても、この環境の <code>CanHibernate</code> は <code>no</code> のままでしたが、後述の実機テストでは Hibernate と復帰に成功しました。判定を上書きして試す場合は、復帰できない可能性を前提にしてください。</p>
+<h2 id="起動環境を再生成する"><a class="header" href="#起動環境を再生成する">起動環境を再生成する</a></h2>
+<pre><code class="language-bash">sudo update-initramfs -u -k all
+sudo update-grub
+sudo reboot
+</code></pre>
+<p>swap パーティションではなく swapfile を使っているため、<code>update-initramfs</code> が UUID に一致する swap デバイスがないという警告を出す場合があります。この環境では、カーネル引数の <code>resume_offset</code> と組み合わせることで復帰できました。</p>
+<h2 id="再起動後に設定を確認する"><a class="header" href="#再起動後に設定を確認する">再起動後に設定を確認する</a></h2>
+<p>カーネル引数に <code>resume</code> と <code>resume_offset</code> が含まれることを確認します。</p>
+<pre><code class="language-bash">cat /proc/cmdline
+cat /sys/power/resume
+cat /sys/power/resume_offset
+</code></pre>
+<p>systemd の判定も確認できます。</p>
+<pre><code class="language-bash">busctl call org.freedesktop.login1 \
+  /org/freedesktop/login1 \
+  org.freedesktop.login1.Manager CanHibernate
+</code></pre>
+<h2 id="実機でテストする"><a class="header" href="#実機でテストする">実機でテストする</a></h2>
+<p>未保存の作業がないことを確認して実行します。</p>
+<pre><code class="language-bash">systemctl hibernate
+</code></pre>
+<p>画面が消えても、イメージの書き込みが終わる前に電源ボタンを押さないようにします。この端末では約 60 秒待ち、電源が切れた後で電源ボタンを押しました。復帰後、稼働時間がリセットされず、元のセッションと周辺機器が復元されたことを確認しました。</p>
+<p>確認した項目:</p>
+<ul>
+<li>画面表示</li>
+<li>Type Cover のキーボードとタッチパッド</li>
+<li>タッチパネル</li>
+<li>Wi-Fi と音声</li>
+<li>Ubuntu を格納した USB ドライブ</li>
+<li>開いていたセッション</li>
+</ul>
+<p>1 回目は保存処理中に電源ボタンを押したため、<code>Wakeup event detected during hibernation, rolling back</code> となりました。2 回目は操作せずに待ち、Hibernate から正常に復帰しました。</p>
+<h2 id="gnome-での運用"><a class="header" href="#gnome-での運用">GNOME での運用</a></h2>
+<p>この環境では GNOME の <code>gsd-power</code> がふた閉じイベントを処理していたため、<code>logind.conf</code> の <code>HandleLidSwitch=suspend-then-hibernate</code> は GNOME ログイン中に適用されませんでした。ふた閉じは既定の Suspend のままとし、長時間使わない場合は先に <code>systemctl hibernate</code> を実行しています。</p>
+<p>GNOME の無操作時動作を変更する場合は、現在値を控えてから <code>gsettings</code> で設定します。</p>
+<pre><code class="language-bash">gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-timeout 3600
+gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-type 'hibernate'
+gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 3600
+gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 'hibernate'
+</code></pre>
+<h2 id="運用上の注意"><a class="header" href="#運用上の注意">運用上の注意</a></h2>
+<ul>
+<li>Hibernate 中および復帰前に Ubuntu の USB ドライブを外さない</li>
+<li>Hibernate 後、復帰する前に別の OS から Ubuntu のファイルシステムを変更しない</li>
+<li><code>/swap.img</code> を削除、再作成、移動、デフラグした場合はオフセットを再取得する</li>
+<li>短時間の離席には Suspend、長時間使わない場合には動作確認済みの Hibernate またはシャットダウンを使う</li>
+</ul>
+<h2 id="設定を元に戻す"><a class="header" href="#設定を元に戻す">設定を元に戻す</a></h2>
+<p>作成した設定ファイルを削除し、起動環境を再生成してから再起動します。</p>
+<pre><code class="language-bash">sudo rm /etc/default/grub.d/99-hibernate.cfg
+sudo rm /etc/initramfs-tools/conf.d/resume
+sudo rm /etc/systemd/sleep.conf.d/99-hibernate.conf
+sudo update-initramfs -u -k all
+sudo update-grub
+sudo reboot
+</code></pre>
+<h2 id="参考資料"><a class="header" href="#参考資料">参考資料</a></h2>
+<ul>
+<li><a href="https://docs.kernel.org/power/swsusp.html">Linux kernel: Swap suspend</a></li>
+<li><a href="https://docs.kernel.org/admin-guide/pm/sleep-states.html">Linux kernel: System Sleep States</a></li>
+<li><a href="https://www.freedesktop.org/software/systemd/man/latest/systemd-sleep.conf.html">systemd sleep.conf</a></li>
+<li><a href="https://help.ubuntu.com/stable/ubuntu-help/power-closelid.html.en">Ubuntu Help: Why does my computer turn off when I close the lid?</a></li>
+</ul>
 <footer id="last-change">Last change: <time datetime="2026-08-16">2026-08-16</time>, commit: <a href="https://github.com/0npv527yh9/linux-desktop-setup/commit/5a736f9">5a736f9</a></footer>
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../introduction.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../ubuntu/enable-zram.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../installation-steps/download-iso-image.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../zorin/summary.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -219,11 +319,11 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../introduction.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../ubuntu/enable-zram.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../installation-steps/download-iso-image.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../zorin/summary.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

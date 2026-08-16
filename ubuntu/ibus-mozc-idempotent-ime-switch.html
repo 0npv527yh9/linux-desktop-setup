@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Installation Steps - Linux Desktop Setup</title>
+        <title>Mozc Idempotent IME Switch - Linux Desktop Setup</title>
 
 
         <!-- Custom HTML head -->
@@ -177,39 +177,97 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="installation-steps"><a class="header" href="#installation-steps">Installation Steps</a></h1>
-<p>Linux distro のインストールは以下の手順で行います。</p>
-<ol>
-<li>インストールする Linux ディストーションの ISO イメージをダウンロード</li>
-<li>Live USB 作成</li>
-<li>Live USB 上での起動</li>
-<li>インストール</li>
-<li>インストール後のセットアップ</li>
-</ol>
-<p>どの Linux distro をインストールする場合もほとんど手順は同じなので先にまとめておきます。</p>
-<h2 id="必要なもの"><a class="header" href="#必要なもの">必要なもの</a></h2>
+                        <h1 id="idempotent-japanese-and-english-input-switching-with-mozc"><a class="header" href="#idempotent-japanese-and-english-input-switching-with-mozc">Idempotent Japanese and English Input Switching with Mozc</a></h1>
+<p>Ubuntu の IBus + Mozc で、JIS キーボードの変換・無変換キーを次のように設定します。</p>
+<ul>
+<li>変換キーを押すと、現在の状態にかかわらず日本語入力になる</li>
+<li>無変換キーを押すと、現在の状態にかかわらず英語入力になる</li>
+</ul>
+<p>同じキーを繰り返し押しても結果が変わらない、MacBook の「かな」「英数」キーに近い操作です。オンとオフを交互に切り替えるトグル方式と異なり、現在の入力モードを意識せずに切り替えられます。</p>
+<h2 id="動作確認環境"><a class="header" href="#動作確認環境">動作確認環境</a></h2>
+<ul>
+<li>Ubuntu 24.04</li>
+<li>GNOME / Wayland</li>
+<li>IBus 1.5.29</li>
+<li>Mozc 2.28.4715.102（<code>ibus-mozc</code>）</li>
+<li>Surface Pro 2017 / JIS 配列キーボード</li>
+</ul>
+<h2 id="mozc-のキー設定を開く"><a class="header" href="#mozc-のキー設定を開く">Mozc のキー設定を開く</a></h2>
+<p>画面右上の入力モード表示（<code>A</code> または <code>あ</code>）から「ツール」→「プロパティ」を開きます。「一般」タブの「キー設定」で「編集」を押します。</p>
+<p><code>MS-IME</code> などの既存設定を選択してから編集すると、それをベースに「カスタム」設定が作成されます。</p>
+<h2 id="変換キーで日本語入力を有効にする"><a class="header" href="#変換キーで日本語入力を有効にする">変換キーで日本語入力を有効にする</a></h2>
+<p>次の行を追加または変更します。</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>項目</th><th>備考</th></tr>
+<tr><th>モード</th><th>入力キー</th><th>コマンド</th></tr>
 </thead>
 <tbody>
-<tr><td>インターネットに接続している PC</td><td>Linux をインストールする PC と同一でも可</td></tr>
-<tr><td>ISO イメージを保存するストレージ</td><td>Linux をインストールするストレージと同一でも可</td></tr>
-<tr><td>Live USB 用の USB メモリ</td><td>既存のデータは完全に消えるので不要なものや新品のもの</td></tr>
+<tr><td>直接入力</td><td><code>Henkan</code></td><td>IME を有効化</td></tr>
 </tbody>
 </table>
 </div>
+<p><code>直接入力</code> は英数字をそのまま入力している状態です。この状態で変換キーを押すと Mozc が有効になります。すでに日本語入力中であれば、変換キーは各入力状態に元から割り当てられた変換操作を行います。</p>
+<h2 id="無変換キーで英語入力へ戻す"><a class="header" href="#無変換キーで英語入力へ戻す">無変換キーで英語入力へ戻す</a></h2>
+<p>日本語入力には複数の状態があるため、無変換キーの設定を 3 行変更します。</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>モード</th><th>入力キー</th><th>コマンド</th></tr>
+</thead>
+<tbody>
+<tr><td>入力文字なし</td><td><code>Muhenkan</code></td><td>キャンセル後 IME を無効化</td></tr>
+<tr><td>変換前入力中</td><td><code>Muhenkan</code></td><td>キャンセル後 IME を無効化</td></tr>
+<tr><td>変換中</td><td><code>Muhenkan</code></td><td>キャンセル後 IME を無効化</td></tr>
+</tbody>
+</table>
+</div>
+<p>「キャンセル後 IME を無効化」を使うと、入力途中の読みや変換候補をキャンセルしてから英語入力に戻ります。入力中の文字を残して切り替えたい場合は「IME を無効化」を選びます。</p>
+<h2 id="入力状態を理解する"><a class="header" href="#入力状態を理解する">入力状態を理解する</a></h2>
+<p>Mozc では、同じキーに対して現在の入力状態ごとに異なる動作を設定できます。</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>設定画面の名称</th><th>内部名</th><th>入力言語</th><th>状態</th></tr>
+</thead>
+<tbody>
+<tr><td>直接入力</td><td><code>DirectInput</code></td><td>英語</td><td>英数字をそのまま入力している</td></tr>
+<tr><td>入力文字なし</td><td><code>Precomposition</code></td><td>日本語</td><td>Mozc は有効だが、まだ文字を入力していない</td></tr>
+<tr><td>変換前入力中</td><td><code>Composition</code></td><td>日本語</td><td>読みを入力している</td></tr>
+<tr><td>変換中</td><td><code>Conversion</code></td><td>日本語</td><td>変換候補を選んでいる</td></tr>
+</tbody>
+</table>
+</div>
+<p>無変換キーをどのタイミングで押しても英語入力へ戻すには、3 つの日本語入力状態すべてに割り当てる必要があります。</p>
+<h2 id="設定を反映する"><a class="header" href="#設定を反映する">設定を反映する</a></h2>
+<p>キー設定画面とプロパティ画面の両方で「OK」を押して保存し、IBus を再起動します。</p>
+<pre><code class="language-bash">ibus restart
+</code></pre>
+<p>テキストエディターなどで次を確認します。</p>
+<ol>
+<li>英語入力中に変換キーを複数回押しても日本語入力のままになる</li>
+<li>日本語入力中に無変換キーを複数回押しても英語入力のままになる</li>
+<li>読みの入力中や変換候補の選択中でも、無変換キーで入力をキャンセルして英語入力へ戻る</li>
+</ol>
+<h2 id="キーを認識しない場合"><a class="header" href="#キーを認識しない場合">キーを認識しない場合</a></h2>
+<p>Mozc の設定を変更しても動作しない場合は、OS が変換・無変換キーを認識しているか確認します。Wayland では <code>wev</code>、X11 では <code>xev</code>、keyd を利用している場合は次のコマンドを利用できます。</p>
+<pre><code class="language-bash">sudo keyd monitor
+</code></pre>
+<p>物理キーのリマップが必要な場合は、<a href="keyd-key-remap.html">keyd で Surface のキーをリマップする</a>を参照してください。</p>
+<h2 id="参考資料"><a class="header" href="#参考資料">参考資料</a></h2>
+<ul>
+<li><a href="https://zenn.dev/rustacean42/articles/ubuntu-ibus-mozc-idempotent-ime-switch">Ubuntu の Mozc で日本語・英語入力をべき等に切り替える</a></li>
+</ul>
 <footer id="last-change">Last change: <time datetime="2026-08-16">2026-08-16</time>, commit: <a href="https://github.com/0npv527yh9/linux-desktop-setup/commit/5a736f9">5a736f9</a></footer>
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../introduction.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../ubuntu/summary.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../installation-steps/download-iso-image.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../ubuntu/keyd-key-remap.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -219,11 +277,11 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../introduction.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../ubuntu/summary.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../installation-steps/download-iso-image.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../ubuntu/keyd-key-remap.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
