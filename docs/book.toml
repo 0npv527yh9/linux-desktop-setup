@@ -11,4 +11,4 @@ command = "mdbook-last-changed"
 renderer = ["html"]
 
 [output.html]
-git-repository-url = "https://github.com/0npv527yh9/multi-linux-macbook-notes"
+git-repository-url = "https://github.com/0npv527yh9/linux-desktop-setup"
