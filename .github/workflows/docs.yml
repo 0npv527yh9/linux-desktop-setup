@@ -25,10 +25,10 @@ jobs:
           cargo install mdbook-last-changed mdbook-alerts
 
       - name: Build
-        run: mdbook build
+        run: mdbook build docs
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./book
+          publish_dir: ./docs/book
