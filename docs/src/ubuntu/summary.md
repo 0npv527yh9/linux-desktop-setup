@@ -6,6 +6,7 @@
 この章では、Surface Pro 2017 で Ubuntu を使う際に行った設定と、その確認結果をまとめます。
 
 - [Surface Pro 2017 で Hibernate を有効にする](hibernate.md)
+- [zram を有効にする](enable-zram.md)
 - [keyd で Surface のキーをリマップする](keyd-key-remap.md)
 - [Mozc で日本語・英語入力をべき等に切り替える](ibus-mozc-idempotent-ime-switch.md)
 
