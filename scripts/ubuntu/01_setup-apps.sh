@@ -21,7 +21,7 @@ echo "deb [signed-by=/etc/apt/keyrings/fury-nushell.gpg] https://apt.fury.io/nus
 
 # Install apps and system packages
 sudo apt update
-sudo apt install -y build-essential firefox code nushell fzf systemd-zram-generator
+sudo apt install -y build-essential clang mold firefox code nushell fzf systemd-zram-generator
 
 # NVM and the latest LTS version of Node.js
 # https://github.com/nvm-sh/nvm#installing-and-updating
@@ -38,6 +38,17 @@ nvm alias default 'lts/*'
 # Rust
 # https://rust-lang.org/tools/install/
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+
+# mold
+cargo_dir="$HOME/.cargo"
+cargo_config="$cargo_dir/config.toml"
+rust_host="$($cargo_dir/bin/rustc -vV | sed -n 's/^host: //p')"
+mold_config="[target.$rust_host]
+linker = \"clang\"
+rustflags = [\"-C\", \"link-arg=-fuse-ld=mold\"]"
+
+mkdir -p "$cargo_dir"
+printf '%s\n' "$mold_config" >"$cargo_config"
 
 # uv
 # https://docs.astral.sh/uv/getting-started/installation/

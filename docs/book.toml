@@ -4,8 +4,6 @@ language = "ja"
 src = "src"
 title = "Linux Desktop Setup"
 
-[preprocessor.alerts]
-
 [preprocessor.last-changed]
 command = "mdbook-last-changed"
 renderer = ["html"]
